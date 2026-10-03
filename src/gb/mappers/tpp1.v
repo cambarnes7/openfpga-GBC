@@ -123,13 +123,19 @@ assign savestate_back2[26:24] = map_mode;
 assign savestate_back2[31:27] = 0;
 assign savestate_back2[63:32] = { latch_w, latch_dh, latch_m, latch_s };
 
+// The registers return to their power-on values when reset rises (and while no
+// TPP1 cartridge is loaded). A savestate loaded afterwards restores them.
+reg reset_1;
+
 always @(posedge clk_sys) begin
+	reset_1 <= reset;
+
 	if(savestate_load & enable) begin
 		mr0      <= savestate_data2[ 7: 0];
 		mr1      <= savestate_data2[15: 8];
 		mr2      <= savestate_data2[23:16];
 		map_mode <= savestate_data2[26:24];
-	end else if(~enable | reset) begin
+	end else if(~enable | (reset & ~reset_1)) begin
 		mr0      <= 8'd1;
 		mr1      <= 8'd0;
 		mr2      <= 8'd0;
