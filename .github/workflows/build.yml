@@ -79,4 +79,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/tpp1-v')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" "CSE.GBCTPP1_$VERSION.zip" --title "GBC + TPP1 $VERSION" --notes "Pocket core folder: unzip onto the SD card root (merge, do not replace). See README.md."
+        run: |
+          gh release create "$GITHUB_REF_NAME" "CSE.GBCTPP1_$VERSION.zip" \
+            --title "GBC + TPP1 $VERSION" \
+            --notes "Pocket core folder. Unzip onto the SD card root (merge, do not replace). See README.md."
