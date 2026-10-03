@@ -81,5 +81,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" "CSE.GBCTPP1_$VERSION.zip" \
-            --title "GBC + TPP1 $VERSION" \
-            --notes "Pocket core folder. Unzip onto the SD card root (merge, do not replace). See README.md."
+            --title "GBC + TPP1 $VERSION" --prerelease \
+            --notes "Pocket core folder. Unzip onto the SD card root (merge, do not replace). See README.md. Verified in simulation only; not yet run on a Pocket."
