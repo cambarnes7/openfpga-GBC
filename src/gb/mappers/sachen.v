@@ -22,7 +22,7 @@ module sachen (
 	inout  [7:0]  cram_do_b,
 	inout [16:0]  cram_addr_b,
 
-	inout [22:0]  mbc_addr_b,
+	inout [24:0]  mbc_addr_b,
 	inout         ram_enabled_b,
 	inout         has_battery_b
 );
@@ -34,7 +34,7 @@ wire [16:0] cram_addr;
 wire        has_battery;
 wire [63:0] savestate_back;
 
-assign mbc_addr_b       = enable ? mbc_addr       : 23'hZ;
+assign mbc_addr_b       = enable ? {2'b00, mbc_addr}       : 25'hZ;
 assign cram_do_b        = enable ? cram_do        :  8'hZ;
 assign cram_addr_b      = enable ? cram_addr      : 17'hZ;
 assign ram_enabled_b    = enable ? ram_enabled    :  1'hZ;

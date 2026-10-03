@@ -3,12 +3,12 @@
     "magic": "APF_VER_1",
     "metadata": {
       "platform_ids": ["gbc"],
-      "shortname": "GBC",
-      "description": "Game Boy Color",
-      "author": "budude2",
-      "url": "https://github.com/budude2/openfpga-GBC",
-      "version": "1.4.0",
-      "date_release": "2026-04-12"
+      "shortname": "GBCTPP1",
+      "description": "Game Boy Color with the TPP1 mapper",
+      "author": "CSE",
+      "url": "https://github.com/cambarnes7/openfpga-GBC",
+      "version": "1.4.0-tpp1.1",
+      "date_release": "2026-10-02"
     },
     "framework": {
       "target_product": "Analogue Pocket",

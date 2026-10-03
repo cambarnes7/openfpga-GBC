@@ -18,7 +18,7 @@ module cart_top (
 
 	input         nCS,
 
-	output [22:0] mbc_addr,
+	output [24:0] mbc_addr,
 
 	output reg    dn_write,
 	output        cart_ready,
@@ -81,6 +81,7 @@ module cart_top (
 // -------------------------------------------------
 // 0 0 0 0 X X X X X X X X X X X X X X X X X X X X X up to 2MB used as ROM (MBC1-3), 8MB for MBC5 
 // 0 0 0 0 R R B B B B B C C C C C C C C C C C C C C MBC1 ROM (R=RAM bank in mode 0)
+// X X X X X X X X X X X X X X X X X X X X X X X X X up to 32MB for TPP1 (11-bit bank)
 
 wire [15:0] SS_Ext;
 wire [15:0] SS_Ext_BACK;
@@ -125,6 +126,8 @@ mappers mappers (
 	.sachen ( sachen),
 	.wisdom_tree ( wisdom_tree ),
 	.mani161 ( mani161 ),
+	.tpp1 ( tpp1 ),
+	.tpp1_features ( tpp1_features ),
 
 	.megaduck ( megaduck_en ),
 
@@ -150,7 +153,7 @@ mappers mappers (
 	.savestate_data2  ( SS_Ext2        ),
 	.savestate_back2  ( SS_Ext2_BACK   ),
 
-	.has_ram  ( |cart_ram_size ),
+	.has_ram  ( |cart_ram_size_eff ),
 	.ram_mask ( ram_mask ),
 	.rom_mask ( rom_mask ),
 
@@ -192,14 +195,34 @@ reg [7:0] cart_ram_size;
 reg       cart_cgb_flag;
 reg [7:0] cart_sgb_flag;
 reg [7:0] cart_old_licensee;
+reg [7:0] cart_dest_code;
+reg [7:0] tpp1_ram_size;  // TPP1 header $0152: 0 = none, n = 8 KiB << (n-1)
+reg [7:0] tpp1_features;  // TPP1 header $0153: bit 0 rumble, 1 multi-speed, 2 RTC, 3 battery
 reg [15:0] cart_logo_data[0:7];
+
+// TPP1 is identified by three header bytes: $0147 = $BC, $0149 = $C1, $014A = $65
+wire tpp1 = (cart_mbc_type == 8'hBC) && (cart_ram_size == 8'hC1) && (cart_dest_code == 8'h65);
+
+// TPP1 keeps its RAM size in $0152 as a shift count. Translate it to the standard
+// $0149 code so the rest of the core (masks, save file size, savestates) is unchanged.
+// The cart RAM holds 128 KiB, so larger declarations are capped there.
+wire [7:0] tpp1_ram_code =
+	   (tpp1_ram_size == 0)?8'd0:      // none
+	   (tpp1_ram_size == 1)?8'd2:      // 8k
+	   (tpp1_ram_size == 2)?8'd3:      // 16k, kept in a 32k file
+	   (tpp1_ram_size == 3)?8'd3:      // 32k
+	   (tpp1_ram_size == 4)?8'd5:      // 64k
+	   8'd4;                           // 128k and above
+
+wire [7:0] cart_ram_size_eff = tpp1 ? tpp1_ram_code : cart_ram_size;
 
 // RAM size
 wire [3:0] ram_mask =                  // 0 - no ram
-	   (cart_ram_size == 1)?4'b0000:   // 1 - 2k, 1 bank
-	   (cart_ram_size == 2)?4'b0000:   // 2 - 8k, 1 bank
-	   (cart_ram_size == 3)?4'b0011:   // 3 - 32k, 4 banks
-	   (cart_ram_size == 5)?4'b0111:   // 5 - 64k, 8 banks
+	   (tpp1 && tpp1_ram_size == 2)?4'b0001: // TPP1 16k, 2 banks
+	   (cart_ram_size_eff == 1)?4'b0000:   // 1 - 2k, 1 bank
+	   (cart_ram_size_eff == 2)?4'b0000:   // 2 - 8k, 1 bank
+	   (cart_ram_size_eff == 3)?4'b0011:   // 3 - 32k, 4 banks
+	   (cart_ram_size_eff == 5)?4'b0111:   // 5 - 64k, 8 banks
 	   4'b1111;                        // 4 - 128k 16 banks
 
 // ROM size
@@ -220,7 +243,7 @@ wire [8:0] rom_mask =
                             9'b001111111;  //$54 - 96 banks = 1.5M
 */
 
-reg [8:0] rom_mask; // get mask from file size
+reg [10:0] rom_mask; // get mask from file size (2048 banks = 32 MiB)
 
 wire mbc1 = (mapper_sel_r == 3'd3) || (cart_mbc_type == 1) || (cart_mbc_type == 2) || (cart_mbc_type == 3);
 wire mbc2 = (cart_mbc_type == 5) || (cart_mbc_type == 6);
@@ -276,16 +299,19 @@ always @(posedge clk_sys) begin
 		cart_cgb_flag <= 1'b0;
 		cart_sgb_flag <= 8'd0;
 		cart_old_licensee <= 8'd0;
+		cart_dest_code <= 8'd0;
+		tpp1_ram_size <= 8'd0;
+		tpp1_features <= 8'd0;
 		mbc1m <= 0;
 		mmm01 <= 0;
 		{ sachen, sachen_t1, sachen_t2 } <= 0;
 		mapper_sel_r <= mapper_sel;
-		rom_mask <= 9'd0;
+		rom_mask <= 11'd0;
 	end
 
 	if(cart_download & ioctl_wr) begin
 
-		rom_mask <= ioctl_addr[22:14] | rom_mask;
+		rom_mask <= ioctl_addr[24:14] | rom_mask;
 
 		if (megaduck) begin
 			cart_cgb_flag <= 0;
@@ -303,7 +329,8 @@ always @(posedge clk_sys) begin
 						if ( mmm01 && ioctl_dout[15:8] == 8'h11) cart_mbc_type <= 8'h0B;
 					end
 					12'h148: { cart_ram_size, cart_rom_size } <= ioctl_dout;
-					12'h14a: { cart_old_licensee } <= ioctl_dout[15:8];
+					12'h14a: { cart_old_licensee, cart_dest_code } <= ioctl_dout;
+					12'h152: { tpp1_features, tpp1_ram_size } <= ioctl_dout;
 				endcase
 	
 			// Disable other mappers when a specific mapper has been selected
@@ -365,7 +392,7 @@ always @(posedge clk_sys) begin
 	end
 end
 
-assign ram_size = cart_ram_size;
+assign ram_size = cart_ram_size_eff;
 
 reg cart_ready_r = 0;
 reg ioctl_wait_r;
@@ -415,13 +442,13 @@ wire [7:0]    cram_di = sleep_savestate ? Savestate_CRAMWriteData : mbc_cram_wr 
 // RAM size
 assign ram_mask_file =              // 0 - no ram
 		(mbc2 || mbc7 || tama)?8'h01:       // mbc2 512x4bits, mbc7 256 bytes EEPROM, TAMA 32 bytes
-	   (cart_ram_size == 1)?8'h03:  // 1 - 2k, 1 bank		 sd_lba[1:0]
-	   (cart_ram_size == 2)?8'h0F:  // 2 - 8k, 1 bank		 sd_lba[3:0]
-	   (cart_ram_size == 3)?8'h3F:  // 3 - 32k, 4 banks	 sd_lba[5:0]
-	   (cart_ram_size == 5)?8'h7F:  // 5 - 64k, 8 banks	 sd_lba[6:0]
+	   (cart_ram_size_eff == 1)?8'h03:  // 1 - 2k, 1 bank		 sd_lba[1:0]
+	   (cart_ram_size_eff == 2)?8'h0F:  // 2 - 8k, 1 bank		 sd_lba[3:0]
+	   (cart_ram_size_eff == 3)?8'h3F:  // 3 - 32k, 4 banks	 sd_lba[5:0]
+	   (cart_ram_size_eff == 5)?8'h7F:  // 5 - 64k, 8 banks	 sd_lba[6:0]
 		8'hFF;                      // 4 - 128k 16 banks  sd_lba[7:0] 1111
 
-assign has_save = mbc_battery && (cart_ram_size > 0 || mbc2 || mbc7 || tama);
+assign has_save = mbc_battery && (cart_ram_size_eff > 0 || mbc2 || mbc7 || tama);
 
 // Up to 8kb * 16banks of Cart Ram (128kb)
 dpram #(16) cram_l (

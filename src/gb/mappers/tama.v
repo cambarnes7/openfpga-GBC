@@ -33,7 +33,7 @@ module tama (
 	inout         cram_wr_b,
 	inout   [7:0] cram_wr_do_b,
 
-	inout [22:0]  mbc_addr_b,
+	inout [24:0]  mbc_addr_b,
 	inout         ram_enabled_b,
 	inout         has_battery_b
 );
@@ -48,7 +48,7 @@ wire [7:0] cram_wr_do;
 wire cram_wr;
 wire cart_oe;
 
-assign mbc_addr_b       = enable ? mbc_addr       : 23'hZ;
+assign mbc_addr_b       = enable ? {2'b00, mbc_addr}       : 25'hZ;
 assign cram_do_b        = enable ? cram_do        :  8'hZ;
 assign cram_addr_b      = enable ? cram_addr      : 17'hZ;
 assign ram_enabled_b    = enable ? ram_enabled    :  1'hZ;

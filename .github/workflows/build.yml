@@ -1,0 +1,82 @@
+name: Build
+
+# Simulates the cartridge logic, compiles the GBC core with Quartus and packages
+# it as a Pocket core folder. A tag named tpp1-v* also publishes a release.
+
+on:
+  push:
+    branches: [tpp1]
+    tags: ['tpp1-v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Icarus Verilog
+        run: sudo apt-get update && sudo apt-get install -y iverilog
+      - name: TPP1 mapper test
+        run: |
+          sim/run.sh | tee tpp1.log
+          grep -q '^PASS$' tpp1.log
+      - name: Existing mappers match upstream
+        run: |
+          git worktree add /tmp/upstream 864253c
+          sim/compare_upstream.sh /tmp/upstream
+
+  bitstream:
+    runs-on: ubuntu-latest
+    needs: simulate
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile (Quartus 21.1 Lite)
+        run: |
+          docker run --rm -v "${{ github.workspace }}":/build -w /build/src \
+            raetro/quartus:21.1 quartus_sh --flow compile ap_core
+
+      - name: Timing summary
+        if: always()
+        run: |
+          STA=src/output_files/ap_core.sta.summary
+          FIT=src/output_files/ap_core.fit.summary
+          {
+            echo '### Fitter'; echo '```'; cat "$FIT" 2>/dev/null || echo 'no fitter summary'; echo '```'
+            echo '### Timing (negative slack only)'; echo '```'
+            if [ -f "$STA" ]; then
+              awk '/^Type/ {t=$0} /^Slack/ {s=$0; v=$3+0} /^TNS/ { if (v < 0) { print t; print s; print $0; print "" } }' "$STA"
+            else echo 'no timing summary'; fi
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Package
+        run: |
+          python3 scripts/reverse_bits.py src/output_files/ap_core.rbf pkg/gbc/Cores/CSE.GBCTPP1/gbc.rbf_r
+          VERSION=$(jq -r '.core.metadata.version' pkg/gbc/Cores/CSE.GBCTPP1/core.json)
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          cd pkg/gbc && zip -r "../../CSE.GBCTPP1_$VERSION.zip" Assets Cores Platforms
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CSE.GBCTPP1_${{ env.VERSION }}
+          path: pkg/gbc
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reports
+          path: |
+            src/output_files/*.summary
+            src/output_files/*.rpt
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/tpp1-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "CSE.GBCTPP1_$VERSION.zip" --title "GBC + TPP1 $VERSION" --notes "Pocket core folder: unzip onto the SD card root (merge, do not replace). See README.md."

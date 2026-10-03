@@ -167,7 +167,7 @@ always @(posedge clk) begin
 				sd_ba   <= addr[21:20];
 
 				din_r   <= din;
-				addr_r  <= { we ? ~ds : 2'b00, 2'b10, addr[22], addr[7:0] };  // auto precharge
+				addr_r  <= { we ? ~ds : 2'b00, 1'b1, addr[23], addr[22], addr[7:0] };  // auto precharge, 10 column bits (32MB)
 			end
 			else if (autorefresh || refresh) begin
 				sd_cmd <= CMD_AUTO_REFRESH;

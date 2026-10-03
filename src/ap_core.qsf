@@ -776,6 +776,7 @@ set_global_assignment -name VHDL_FILE gb/gb_savestates.vhd
 set_global_assignment -name VHDL_FILE gb/dpram.vhd
 set_global_assignment -name SYSTEMVERILOG_FILE gb/ddram.sv
 set_global_assignment -name VHDL_FILE gb/bus_savestates.vhd
+set_global_assignment -name VERILOG_FILE gb/mappers/tpp1.v
 set_global_assignment -name VERILOG_FILE gb/mappers/tama.v
 set_global_assignment -name VERILOG_FILE gb/mappers/sachen.v
 set_global_assignment -name SYSTEMVERILOG_FILE gb/mappers/rocket.sv

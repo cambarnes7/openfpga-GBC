@@ -1,0 +1,1 @@
+budude2's Game Boy Color core (a port of the MiSTer core) with the TPP1 mapper added: 16-bit ROM bank (ROMs up to 32 MiB), up to 128 KiB of save RAM, real-time clock. Every mapper of the stock core is unchanged. Source: https://github.com/cambarnes7/openfpga-GBC (branch tpp1).
