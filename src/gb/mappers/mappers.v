@@ -52,7 +52,7 @@ module mappers(
 
 	input         has_ram,
 	input   [3:0] ram_mask,
-	input  [10:0] rom_mask,
+	input  [11:0] rom_mask,
 
 	input  [14:0] cart_addr,
 	input         cart_a15,
@@ -77,7 +77,7 @@ module mappers(
 	output  [7:0] cram_wr_do, // For writing to Cart RAM directly without CPU (MBC7 EEPROM)
 	output        cram_wr,
 
-	output [24:0] mbc_addr,
+	output [25:0] mbc_addr,
 	output        ram_enabled,
 	output        has_battery,
 	output        rumbling
@@ -86,7 +86,7 @@ module mappers(
 
 tri1 [7:0] cram_do_b;
 tri1 [7:0] rom_do_b;
-tri0 [24:0] mbc_addr_b;
+tri0 [25:0] mbc_addr_b;
 tri0 [16:0] cram_addr_b;
 tri0 ram_enabled_b, has_battery_b;
 tri0 [15:0] savestate_back_b;

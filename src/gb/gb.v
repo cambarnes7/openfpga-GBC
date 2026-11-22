@@ -49,7 +49,7 @@ module gb (
 	input dmg_boot_download,
 	input sgb_boot_download,
 	input         ioctl_wr,
-	input  [24:0] ioctl_addr,
+	input  [25:0] ioctl_addr,
 	input  [15:0] ioctl_dout,
 
     // Bootrom features

@@ -681,11 +681,11 @@ always_ff @(posedge clk_74a) begin
 end
 
 logic [14:0] cart_addr;
-logic [24:0] mbc_addr;
+logic [25:0] mbc_addr;
 logic cart_a15, cart_rd, cart_wr, cart_oe, cart_wait_n, nCS;
 logic [7:0] cart_di, cart_do;
 logic ioctl_wr, dn_write, cart_ready, cram_rd, cram_wr;
-logic [24:0] ioctl_addr;
+logic [25:0] ioctl_addr;
 logic [15:0] ioctl_dout;
 logic boot_download, cart_download, palette_download, sgb_border_download, cgb_boot_download, dmg_boot_download, sgb_boot_download;
 logic cart_physical_mode, rumble_cart_wr, rumble_cart_rumble;
@@ -730,7 +730,7 @@ wire cart_phi_rise = cart_physical_mode && (cart_phi_counter == cart_phi_period_
 wire  [1:0] sdram_ds     =  cart_download ? 2'b11 : {mbc_addr[0], ~mbc_addr[0]};
 wire [15:0] sdram_do;
 wire [15:0] sdram_di     =  cart_download ? ioctl_dout : 16'd0;
-wire [23:0] sdram_addr   =  cart_download ? ioctl_addr[24:1] : mbc_addr[24:1];
+wire [24:0] sdram_addr   =  cart_download ? ioctl_addr[25:1] : mbc_addr[25:1];
 wire sdram_oe            = ~cart_download & cart_rd & ~cram_rd;
 wire sdram_we            =  cart_download & dn_write;
 wire sdram_refresh_force;

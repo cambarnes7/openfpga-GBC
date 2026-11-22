@@ -8,9 +8,11 @@ and BIOS file.
 * **TPP1** (`src/gb/mappers/tpp1.v`): 16-bit ROM bank, register read-back, read-only
   and read/write SRAM, the real-time clock with latch/set/stop/start/overflow.
   Detected from the header (`$0147 = $BC`, `$0149 = $C1`, `$014A = $65`).
-* **ROM size:** the cartridge address path is 25 bits (it was 23), so ROMs up to
-  32 MiB load and bank; TPP1 bank numbers above 2047 wrap. 16 MiB is tested in
-  simulation; nothing above 16 MiB has run on hardware.
+* **ROM size:** the cartridge address path is 26 bits (upstream: 23), so ROMs up to
+  64 MiB load and bank (the Pocket's whole SDRAM: 13 row, 10 column and 2 bank
+  bits); TPP1 bank numbers above 4095 wrap. 16, 32 and 64 MiB are tested in
+  simulation; nothing has run on hardware yet, and the SDRAM controller's
+  thirteenth row bit (the upper 32 MiB) is not simulated.
 * **SRAM:** up to 128 KiB (TPP1 size codes above that are capped).
 * **Clock:** kept in the save file tail exactly like the MBC3 clock, and advanced
   by the Pocket's clock on the next start.

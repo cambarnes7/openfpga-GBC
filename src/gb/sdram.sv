@@ -47,7 +47,7 @@ module sdram
 
 	input      [15:0] din,			// data input from chipset/cpu
 	output reg [15:0] dout,			// data output to chipset/cpu
-	input      [23:0] addr,       // 24 bit word address
+	input      [24:0] addr,       // 25 bit word address (64 MiB: 13 row, 10 column, 2 bank bits)
 	input       [1:0] ds,         // upper/lower data strobe
 	input 		 		oe,         // cpu/chipset requests read
 	input 		 		we,         // cpu/chipset requests write
@@ -163,11 +163,11 @@ always @(posedge clk) begin
 
 				// RAS phase
 				sd_cmd  <= CMD_ACTIVE;
-				sd_addr <= { 1'b0, addr[19:8] };
+				sd_addr <= { addr[24], addr[19:8] };   // 13 row bits: A12 selects the upper 32 MiB
 				sd_ba   <= addr[21:20];
 
 				din_r   <= din;
-				addr_r  <= { we ? ~ds : 2'b00, 1'b1, addr[23], addr[22], addr[7:0] };  // auto precharge, 10 column bits (32MB)
+				addr_r  <= { we ? ~ds : 2'b00, 1'b1, addr[23], addr[22], addr[7:0] };  // auto precharge, 10 column bits
 			end
 			else if (autorefresh || refresh) begin
 				sd_cmd <= CMD_AUTO_REFRESH;

@@ -35,7 +35,7 @@ module tpp1 (
 
 	input             has_ram,
 	input       [3:0] ram_mask,
-	input      [10:0] rom_mask,
+	input      [11:0] rom_mask,
 	input       [7:0] features,   // header byte $0153: bit 2 = RTC, bit 3 = battery
 
 	input      [14:0] cart_addr,
@@ -52,7 +52,7 @@ module tpp1 (
 	inout       [7:0] cram_do_b,
 	inout      [16:0] cram_addr_b,
 
-	inout      [24:0] mbc_addr_b,
+	inout      [25:0] mbc_addr_b,
 	inout             ram_enabled_b,
 	inout             has_battery_b
 );
@@ -62,7 +62,7 @@ localparam MAP_RAM_RO = 3'd2;  // MR3 = 02: SRAM, read-only
 localparam MAP_RAM_RW = 3'd3;  // MR3 = 03: SRAM, read/write
 localparam MAP_RTC    = 3'd5;  // MR3 = 05: RTC latch registers, read/write
 
-wire [24:0] mbc_addr;
+wire [25:0] mbc_addr;
 wire  [7:0] cram_do;
 wire [16:0] cram_addr;
 wire        cart_oe;
@@ -76,7 +76,7 @@ reg  [47:0] RTC_savedtimeOut;
 wire        has_rtc   = features[2];
 wire        RTC_inuse = has_rtc;
 
-assign mbc_addr_b         = enable ? mbc_addr         : 25'hZ;
+assign mbc_addr_b         = enable ? mbc_addr         : 26'hZ;
 assign cram_do_b          = enable ? cram_do          :  8'hZ;
 assign cram_addr_b        = enable ? cram_addr        : 17'hZ;
 assign cart_oe_b          = enable ? cart_oe          :  1'hZ;
@@ -161,10 +161,10 @@ always @(posedge clk_sys) begin
 end
 
 // 0x0000-0x3FFF = Bank 0
-wire [10:0] rom_bank   = (~cart_addr[14]) ? 11'd0 : { mr1[2:0], mr0 };
+wire [11:0] rom_bank   = (~cart_addr[14]) ? 12'd0 : { mr1[3:0], mr0 };
 
 // mask address lines to enable proper mirroring
-wire [10:0] rom_bank_m = rom_bank & rom_mask;
+wire [11:0] rom_bank_m = rom_bank & rom_mask;
 
 assign mbc_addr = { rom_bank_m, cart_addr[13:0] };
 

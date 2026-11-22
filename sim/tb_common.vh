@@ -6,16 +6,16 @@
 	reg nCS = 1;
 	wire [7:0] cart_do; wire cart_oe;
 	wire [MAW-1:0] mbc_addr;
-	reg cart_download = 0, ioctl_wr = 0; reg [24:0] ioctl_addr = 0; reg [15:0] ioctl_dout = 0;
+	reg cart_download = 0, ioctl_wr = 0; reg [25:0] ioctl_addr = 0; reg [15:0] ioctl_dout = 0;
 	reg bk_wr = 0, bk_rtc_wr = 0; reg [16:0] bk_addr = 0; reg [15:0] bk_data = 0; wire [15:0] bk_q;
 	reg ce_32k = 0; reg [32:0] RTC_time = 0;
 	wire [31:0] RTC_timestampOut; wire [47:0] RTC_savedtimeOut; wire RTC_inuse;
 	wire [7:0] ram_mask_file, ram_size; wire has_save, cram_rd, cram_wr, cart_ready, dn_write;
 	wire isGBC_game, isSGB_game, rumbling; wire [63:0] ss_dout; wire [7:0] ss_cram;
 
-	wire [10:0] rom_bank_sel = mbc_addr >> 14;
+	wire [11:0] rom_bank_sel = mbc_addr >> 14;
 	wire [7:0] rom_di = (mbc_addr[13:0] == 0) ? rom_bank_sel[7:0] :
-	                    (mbc_addr[13:0] == 1) ? {5'd0, rom_bank_sel[10:8]} :
+	                    (mbc_addr[13:0] == 1) ? {4'd0, rom_bank_sel[11:8]} :
 	                    mbc_addr[7:0] ^ mbc_addr[15:8];
 
 	cart_top dut (
@@ -38,26 +38,26 @@
 		.Savestate_CRAMWriteData(8'd0), .Savestate_CRAMReadData(ss_cram), .rumbling(rumbling)
 	);
 
-	task dl_word(input [24:0] a, input [15:0] d); begin
+	task dl_word(input [25:0] a, input [15:0] d); begin
 		@(negedge clk); ioctl_addr = a; ioctl_dout = d; ioctl_wr = 1;
 		@(negedge clk); ioctl_wr = 0; repeat (3) @(negedge clk);
 	end endtask
 
 	// Download a ROM of `bytes` bytes with the given header fields.
 	task download(input [7:0] mbc_type, input [7:0] rom_code, input [7:0] ram_code,
-	              input [7:0] dest, input [7:0] ext_ram, input [7:0] ext_feat, input [25:0] bytes);
-		reg [25:0] a;
+	              input [7:0] dest, input [7:0] ext_ram, input [7:0] ext_feat, input [26:0] bytes);
+		reg [26:0] a;
 	begin
 		reset = 1; @(negedge clk); cart_download = 1; repeat (4) @(negedge clk);
-		dl_word(25'h100, 16'hC300);
-		dl_word(25'h142, 16'h8000);              // CGB flag
-		dl_word(25'h146, {mbc_type, 8'h00});
-		dl_word(25'h148, {ram_code, rom_code});
-		dl_word(25'h14a, {8'h33, dest});
-		dl_word(25'h150, 16'h0001);              // TPP1 version 1.0
-		dl_word(25'h152, {ext_feat, ext_ram});
-		for (a = 26'h4000; a < bytes; a = a + 26'h4000) dl_word(a[24:0], 16'hFFFF);
-		dl_word(bytes - 2, 16'hFFFF);
+		dl_word(26'h100, 16'hC300);
+		dl_word(26'h142, 16'h8000);              // CGB flag
+		dl_word(26'h146, {mbc_type, 8'h00});
+		dl_word(26'h148, {ram_code, rom_code});
+		dl_word(26'h14a, {8'h33, dest});
+		dl_word(26'h150, 16'h0001);              // TPP1 version 1.0
+		dl_word(26'h152, {ext_feat, ext_ram});
+		for (a = 27'h4000; a < bytes; a = a + 27'h4000) dl_word(a[25:0], 16'hFFFF);
+		dl_word(bytes[25:0] - 26'd2, 16'hFFFF);
 		cart_download = 0; repeat (8) @(negedge clk);
 		reset = 0; repeat (4) @(negedge clk);
 	end endtask

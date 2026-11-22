@@ -7,8 +7,8 @@
       "description": "Game Boy Color with the TPP1 mapper",
       "author": "CSE",
       "url": "https://github.com/cambarnes7/openfpga-GBC",
-      "version": "1.4.0-tpp1.1",
-      "date_release": "2026-10-02"
+      "version": "1.4.0-tpp1.2",
+      "date_release": "2026-11-22"
     },
     "framework": {
       "target_product": "Analogue Pocket",

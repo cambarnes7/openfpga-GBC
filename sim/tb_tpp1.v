@@ -2,7 +2,7 @@
 // cartridge bus, plus rollover, overflow and save-tail persistence.
 `timescale 1ns/1ps
 module tb_tpp1;
-	localparam MAW = 25;
+	localparam MAW = 26;
 `include "tb_common.vh"
 	integer fails = 0, checks = 0;
 	task check(input [255:0] name, input [63:0] got, input [63:0] want); begin
@@ -16,11 +16,11 @@ module tb_tpp1;
 	task seconds(input integer n); begin repeat (n * 32768 * div) @(posedge clk); end endtask
 
 	task set_bank(input [15:0] b); begin wr(16'h0000, b[7:0]); wr(16'h0001, b[15:8]); end endtask
-	task check_bank(input [15:0] b, input [10:0] want); begin
+	task check_bank(input [15:0] b, input [11:0] want); begin
 		set_bank(b);
 		rd(16'h4000); check("bank lo", rdata, want[7:0]);
 		check("mbc_addr", mbc_addr, {want, 14'd0});
-		rd(16'h4001); check("bank hi", rdata, {5'd0, want[10:8]});
+		rd(16'h4001); check("bank hi", rdata, {4'd0, want[11:8]});
 		rd(16'h0000); check("home bank", rdata, 8'h00);
 	end endtask
 	task set_clock(input [7:0] w, input [7:0] dh, input [7:0] m, input [7:0] s); begin
@@ -56,7 +56,7 @@ module tb_tpp1;
 
 		RTC_time = {1'b1, 32'd1000000};
 		// ---------- 32 MiB, 64 KiB SRAM (shift 4), RTC + battery ----------
-		download(8'hBC, 8'h0A, 8'hC1, 8'h65, 8'h04, 8'h0F, 26'h2000000);
+		download(8'hBC, 8'h0A, 8'hC1, 8'h65, 8'h04, 8'h0F, 27'h2000000);
 		check("has_save", has_save, 1); check("ram_size code (64k)", ram_size, 8'd5);
 		check("ram_mask_file", ram_mask_file, 8'h7F); check("RTC_inuse", RTC_inuse, 1);
 		check("rumbling", rumbling, 0);
@@ -65,9 +65,9 @@ module tb_tpp1;
 		rd(16'hA002); check("MR2 init", rdata, 8'h00); rd(16'hBFFF); check("MR4 init", rdata, 8'hF0);
 		check("cart_oe A000 held", cart_oe, 0);
 		rd(16'h4000); check("bank 1 at power-on", rdata, 8'h01);
-		// 2. banks: all 11 bits reach the address, the rest of the 16 are ignored
-		for (i = 0; i < 14; i = i + 1) check_bank(banks[i], banks[i][10:0]);
-		check_bank(16'd2048, 11'd0); check_bank(16'd4095, 11'd2047); check_bank(16'd0, 11'd0);
+		// 2. banks on 32 MiB: 11 bits reach the address (bank 2048 mirrors bank 0), the rest of the 16 are ignored
+		for (i = 0; i < 14; i = i + 1) check_bank(banks[i], {1'b0, banks[i][10:0]});
+		check_bank(16'd2048, 12'd0); check_bank(16'd4095, 12'd2047); check_bank(16'd0, 12'd0);
 		// registers hold all eight bits; only address bits 1-0 select them
 		wr(16'h2000, 8'h02); wr(16'h3FFD, 8'h81); wr(16'h1236, 8'hC7);
 		wr(16'h0003, 8'h00);
@@ -124,7 +124,7 @@ module tb_tpp1;
 		tail = RTC_savedtimeOut; stamp = RTC_timestampOut;
 		check("tail layout", tail, {18'd0, 1'b1, 1'b0, 8'd10, 3'd5, 5'd22, 6'd58, 6'd57});
 		RTC_time = {1'b0, stamp + 32'd1483506};
-		download(8'hBC, 8'h09, 8'hC1, 8'h65, 8'h05, 8'h0C, 26'h1000000);
+		download(8'hBC, 8'h09, 8'hC1, 8'h65, 8'h05, 8'h0C, 27'h1000000);
 		check("ram_size code (128k)", ram_size, 8'd4); check("ram_mask_file 128k", ram_mask_file, 8'hFF);
 		wr(16'h0003, 8'h00); rd(16'hA003); check("fresh cart: RTC stopped", rdata, 8'hF0);
 		load_tail(stamp, tail);
@@ -133,11 +133,11 @@ module tb_tpp1;
 		// 10w 5d 22:58:57 + 2w 3d 04:05:06 = 13w 2d 03:04:03
 		read_clock; check("catch-up", clock_now, {8'd13, 3'd2, 5'd3, 8'd4, 8'd3});
 		// 16 MiB: bank 1023 is the last one, 1024 mirrors bank 0
-		check_bank(16'd1023, 11'd1023); check_bank(16'd512, 11'd512); check_bank(16'd1024, 11'd0);
+		check_bank(16'd1023, 12'd1023); check_bank(16'd512, 12'd512); check_bank(16'd1024, 12'd0);
 		// a stopped clock does not catch up; overflow survives the reload
 		tail = {18'd0, 1'b0, 1'b1, 8'd200, 3'd1, 5'd2, 6'd3, 6'd4};
 		RTC_time = {1'b1, stamp + 32'd9999999};
-		download(8'hBC, 8'h07, 8'hC1, 8'h65, 8'h00, 8'h04, 26'h400000);
+		download(8'hBC, 8'h07, 8'hC1, 8'h65, 8'h00, 8'h04, 27'h400000);
 		check("no SRAM: no save", has_save, 0);
 		load_tail(stamp, tail); repeat (90000) @(negedge clk);  // the catch-up takes up to 86399 clocks
 		read_clock; check("stopped reload", clock_now, {8'd200, 3'd1, 5'd2, 8'd3, 8'd4});
@@ -147,7 +147,7 @@ module tb_tpp1;
 		// catch-up across the week counter's wrap sets overflow
 		tail = {18'd0, 1'b1, 1'b0, 8'd255, 3'd6, 5'd23, 6'd59, 6'd59};
 		RTC_time = {1'b0, stamp + 32'd10000000};
-		download(8'hBC, 8'h07, 8'hC1, 8'h65, 8'h05, 8'h0C, 26'h400000);
+		download(8'hBC, 8'h07, 8'hC1, 8'h65, 8'h05, 8'h0C, 27'h400000);
 		load_tail(stamp + 32'd9999999, tail); repeat (90000) @(negedge clk);  // the catch-up takes up to 86399 clocks
 		read_clock; check("catch-up wrap", clock_now, 32'h00000000);
 		wr(16'h0003, 8'h00); rd(16'hA003); check("catch-up overflow", rdata, 8'hFC);
@@ -156,6 +156,13 @@ module tb_tpp1;
 		@(negedge clk); reset = 1; repeat (4) @(negedge clk); reset = 0; repeat (4) @(negedge clk);
 		rd(16'hA000); check("MR0 after reset", rdata, 8'h01); rd(16'hA002); check("MR2 after reset", rdata, 8'h00);
 		rd(16'hA003); check("RTC survives reset", rdata, 8'hFC);
+
+		// ---------- 64 MiB (the whole SDRAM): 12 bank bits reach the address, bank 4096 mirrors bank 0 ----------
+		download(8'hBC, 8'h0B, 8'hC1, 8'h65, 8'h04, 8'h0F, 27'h4000000);
+		check("64M has_save", has_save, 1);
+		for (i = 0; i < 16; i = i + 1) check_bank(banks[i], banks[i][11:0]);
+		check_bank(16'd2049, 12'd2049); check_bank(16'd3071, 12'd3071); check_bank(16'd4096, 12'd0); check_bank(16'd8191, 12'd4095);
+		check_bank(16'd0, 12'd0);
 
 		$display("%0d checks, %0d failed", checks, fails);
 		if (fails == 0) $display("PASS"); else $display("FAILED");

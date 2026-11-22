@@ -18,7 +18,7 @@ module cart_top (
 
 	input         nCS,
 
-	output [24:0] mbc_addr,
+	output [25:0] mbc_addr,
 
 	output reg    dn_write,
 	output        cart_ready,
@@ -36,7 +36,7 @@ module cart_top (
 	output        isSGB_game,
 
 	input         ioctl_wr,
-	input  [24:0] ioctl_addr,
+	input  [25:0] ioctl_addr,
 	input  [15:0] ioctl_dout,
 
 	input         bk_wr,
@@ -243,7 +243,7 @@ wire [8:0] rom_mask =
                             9'b001111111;  //$54 - 96 banks = 1.5M
 */
 
-reg [10:0] rom_mask; // get mask from file size (2048 banks = 32 MiB)
+reg [11:0] rom_mask; // get mask from file size (4096 banks = 64 MiB, the SDRAM)
 
 wire mbc1 = (mapper_sel_r == 3'd3) || (cart_mbc_type == 1) || (cart_mbc_type == 2) || (cart_mbc_type == 3);
 wire mbc2 = (cart_mbc_type == 5) || (cart_mbc_type == 6);
@@ -281,7 +281,7 @@ reg mbc1m_check_end, mmm01_check_end;
 
 reg sachen, sachen_t1, sachen_t2;
 
-wire mbc1m_bank = (~|ioctl_addr[24:20] && ioctl_addr[19:12] == 8'h40); // $40000
+wire mbc1m_bank = (~|ioctl_addr[25:20] && ioctl_addr[19:12] == 8'h40); // $40000
 wire mmm01_bank = (ioctl_addr[18:12] == 7'h78); // $78000+
 wire cart_logo_match = &cart_logo_check;
 
@@ -306,12 +306,12 @@ always @(posedge clk_sys) begin
 		mmm01 <= 0;
 		{ sachen, sachen_t1, sachen_t2 } <= 0;
 		mapper_sel_r <= mapper_sel;
-		rom_mask <= 11'd0;
+		rom_mask <= 12'd0;
 	end
 
 	if(cart_download & ioctl_wr) begin
 
-		rom_mask <= ioctl_addr[24:14] | rom_mask;
+		rom_mask <= ioctl_addr[25:14] | rom_mask;
 
 		if (megaduck) begin
 			cart_cgb_flag <= 0;
@@ -320,7 +320,7 @@ always @(posedge clk_sys) begin
 			if (ioctl_addr > 'h100) // Make sure there's time to reset the banks in the mapper
 				cart_mbc_type <= 8'd250;
 		end else begin
-			if (~|ioctl_addr[24:12] || (mmm01_bank & mmm01) ) // MMM01 header is at the end of ROM
+			if (~|ioctl_addr[25:12] || (mmm01_bank & mmm01) ) // MMM01 header is at the end of ROM
 				case(ioctl_addr[11:0])
 					12'h142: cart_cgb_flag <= ioctl_dout[15];
 					12'h146: begin
@@ -341,7 +341,7 @@ always @(posedge clk_sys) begin
 				sachen <= 0;
 			end else begin
 				// Sachen
-				if (~|ioctl_addr[24:12]) begin
+				if (~|ioctl_addr[25:12]) begin
 					case(ioctl_addr[11:0])
 						12'h100: sachen_t1 <= (ioctl_dout[15:8] != 8'hC3);
 						12'h140: sachen_t2 <= (ioctl_dout[ 7:0] == 8'hC3); // 0xC3 opcode is at $140 instead of $101

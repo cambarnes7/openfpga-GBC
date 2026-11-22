@@ -5,7 +5,7 @@ name: Build
 
 on:
   push:
-    branches: [tpp1]
+    branches: [tpp1, tpp1-64m]
     tags: ['tpp1-v*']
   pull_request:
   workflow_dispatch:
